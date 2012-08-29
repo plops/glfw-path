@@ -1,4 +1,6 @@
-(ql:quickload '(cl-glfw cl-opengl cl-glu))
+#.(ql:quickload '(cl-glfw cl-opengl cl-glu))
+
+(declaim (optimize (debug 3) (speed 1) (safety 3)))
 
 (defpackage :g
   (:use :cl :gl))
@@ -15,8 +17,28 @@
   (color 1 0 0) (vertex  1  0 0)
   (color 0 1 0) (vertex -1  1 0)
   (color 0 0 1) (vertex -1 -1 0)
-  (end))
-
+  (end)
+  (let* ((n 1)
+	 (path (%gl:gen-paths-nv n))
+	 (heart "M300 300 C 100 400,100 200,300 100,500 200,500 400,300 300Z"))
+    (cffi:with-foreign-string (s heart)
+     (%gl:path-string-nv path :path-format-svg-nv (length heart)
+			 s))
+    (clear-stencil 0)
+    (clear-color 0 0 0 0)
+    (stencil-mask #xffffffff)
+    (clear :color-buffer-bit :stencil-buffer-bit)
+    (%gl:matrix-load-identity-ext :projection)
+    (%gl:matrix-load-identity-ext :modelview)
+    (%gl:matrix-ortho-ext :modelview 0 1200 0 900 -1 1)
+    (%gl:stencil-fill-path-nv path :count-up-nv #x1f)
+    (enable :stencil-test)
+    (stencil-func :notequal 0 #x1f)
+    (stencil-op :keep :keep :zero)
+    (color 1 1 0)
+    (%gl:cover-fill-path-nv path :bounding-box-nv)
+    (%gl:delete-paths-nv path n)))
+#+nil
 (glfw:do-window (:title "A Simple cl-opengl Example")
     ((matrix-mode :projection)
      (load-identity)
